@@ -1,17 +1,21 @@
 #!/bin/sh
 
-echo "Vicidial installation Centos7 with WebPhone(WebRTC/SIP.js)"
+echo "Vicidial installation AlmaLinux with WebPhone(WebRTC/SIP.js)"
 
 export LC_ALL=C
 
+
 yum groupinstall "Development Tools" -y
 
-yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-yum -y install http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+yum -y install http://rpms.remirepo.net/enterprise/remi-release-8.rpm
 yum -y install yum-utils
-yum-config-manager --enable remi-php74
+dnf module enable php:remi-7.4 -y
 
-yum install make patch gcc perl-Term-ReadLine-Gnu gcc-c++ subversion php php-devel php-gd gd-devel php-mbstring php-mcrypt php-imap php-ldap php-mysql php-odbc php-pear php-xml php-xmlrpc php-opcache curl curl-devel perl-libwww-perl ImageMagick libxml2 libxml2-devel httpd libpcap libpcap-devel libnet ncurses ncurses-devel screen mysql-devel ntp mutt glibc.i686 wget nano unzip sipsak sox libss7* libopen* openssl libsrtp libsrtp-devel unixODBC unixODBC-devel libtool-ltdl libtool-ltdl-devel htop iftop ftp vsftp -y
+dnf -y install dnf-plugins-core
+dnf config-manager --set-enabled powertools
+
+yum install -y php php-mcrypt php-cli php-gd php-curl php-mysql php-ldap php-zip php-fileinfo php-opcache wget unzip make patch gcc gcc-c++ subversion php php-devel php-gd gd-devel readline-devel php-mbstring php-mcrypt php-imap php-ldap php-mysql php-odbc php-pear php-xml php-xmlrpc curl curl-devel perl-libwww-perl ImageMagick libxml2 libxml2-devel httpd libpcap libpcap-devel libnet ncurses ncurses-devel screen kernel* mutt glibc.i686 certbot python3-certbot-apache mod_ssl openssl-devel newt-devel libxml2-devel kernel-devel sqlite-devel libuuid-devel sox sendmail lame-devel htop iftop perl-File-Which php-opcache libss7 mariadb-devel libss7* libopen* 
 yum -y install sqlite-devel
 
 
@@ -46,19 +50,15 @@ EOF
 systemctl restart httpd
 
 
-cat <<MARIADB>> /etc/yum.repos.d/MariaDB.repo
-[mariadb]
-name = MariaDB
-baseurl = http://yum.mariadb.org/10.4/centos7-amd64
-gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-gpgcheck=1
-MARIADB
+dnf install -y mariadb-server mariadb
+
+dnf -y install dnf-plugins-core
+dnf config-manager --set-enabled powertools
 
 
-yum install mariadb-server mariadb -y
+systemctl enable mariadb
 
 cp /etc/my.cnf /etc/my.cnf.original
-
 echo "" > /etc/my.cnf
 
 
@@ -78,11 +78,10 @@ socket = /var/lib/mysql/mysql.sock
 user = mysql
 old_passwords = 0
 ft_min_word_len = 3
-max_connections = 2000
+max_connections = 800
 max_allowed_packet = 32M
 skip-external-locking
 sql_mode="NO_ENGINE_SUBSTITUTION"
-skip-name-resolve
 
 log-error = /var/log/mysqld/mysqld.log
 
@@ -139,11 +138,10 @@ interactive-timeout
 MYSQLCONF
 
 mkdir /var/log/mysqld
-mv /var/log/mysqld.log /var/log/mysqld/mysqld.log
 touch /var/log/mysqld/slow-queries.log
 chown -R mysql:mysql /var/log/mysqld
+systemctl restart mariadb
 
-#Enable and Start httpd and MariaDb
 systemctl enable httpd.service
 systemctl enable mariadb.service
 systemctl restart httpd.service
@@ -153,12 +151,8 @@ systemctl restart mariadb.service
 
 echo "Install Perl"
 
-yum install perl-CPAN -y
-yum install perl-YAML -y
-yum install perl-libwww-perl -y
-yum install perl-DBI -y
-yum install perl-DBD-MySQL -y
-yum install perl-GD -y
+yum install -y perl-CPAN perl-YAML perl-libwww-perl perl-DBI perl-DBD-MySQL perl-GD perl-Env perl-Term-ReadLine-Gnu perl-SelfLoader perl-open.noarch
+cpan -i Tk String::CRC Tk::TableMatrix Net::Address::IP::Local Term::ReadLine::Gnu Spreadsheet::Read Net::Address::IPv4::Local RPM::Specfile Spreadsheet::XLSX Spreadsheet::ReadSXC MD5 Digest::MD5 Digest::SHA1 Bundle::CPAN Pod::Usage Getopt::Long DBI DBD::mysql Net::Telnet Time::HiRes Net::Server Mail::Sendmail Unicode::Map Jcode Spreadsheet::WriteExcel OLE::Storage_Lite Proc::ProcessTable IO::Scalar Scalar::Util Spreadsheet::ParseExcel Archive::Zip Compress::Raw::Zlib Spreadsheet::XLSX Test::Tester Spreadsheet::ReadSXC Text::CSV Test::NoWarnings Text::CSV_PP File::Temp Text::CSV_XS Spreadsheet::Read LWP::UserAgent HTML::Entities HTML::Strip HTML::FormatText HTML::TreeBuilder Switch Time::Local Mail::POP3Client Mail::IMAPClient Mail::Message IO::Socket::SSL readline
 
 echo "Please Press ENTER for CPAN Install"
 
@@ -180,6 +174,8 @@ cpanm MD5
 cpanm Digest::MD5
 cpanm Digest::SHA1
 cpanm readline --force
+
+
 cpanm Bundle::CPAN
 cpanm DBI
 cpanm -f DBD::mysql
@@ -221,7 +217,7 @@ cpanm Text::CSV
 cpanm Text::CSV_XS
 
 
-#Install Asterisk Perl 
+#Install Asterisk Perl
 cd /usr/src
 wget http://download.vicidial.com/required-apps/asterisk-perl-0.08.tar.gz
 tar xzf asterisk-perl-0.08.tar.gz
@@ -229,6 +225,9 @@ cd asterisk-perl-0.08
 perl Makefile.PL
 make all
 make install 
+
+dnf --enablerepo=powertools install libsrtp-devel -y
+yum install -y elfutils-libelf-devel libedit-devel
 
 
 #Install Lame
@@ -240,12 +239,12 @@ cd lame-3.99.5
 make
 make install
 
+
 #Install Jansson
 cd /usr/src/
-wget http://www.digip.org/jansson/releases/jansson-2.5.tar.gz
-tar -zxf jansson-2.5.tar.gz
-#tar xvzf jasson*
-cd jansson*
+wget https://digip.org/jansson/releases/jansson-2.13.tar.gz
+tar xvzf jansson*
+cd jansson-2.13
 ./configure
 make clean
 make
@@ -254,15 +253,30 @@ ldconfig
 
 #Install Dahdi
 echo "Install Dahdi"
-yum install dahdi-* -y
-wget http://download.vicidial.com/beta-apps/dahdi-linux-complete-2.11.1.tar.gz
-tar xzf dahdi-linux-complete-2.11.1.tar.gz
-cd dahdi-linux-complete-2.11.1+2.11.1
-make all
+cd /usr/src/
+wget https://downloads.asterisk.org/pub/telephony/dahdi-linux-complete/dahdi-linux-complete-3.1.0+3.1.0.tar.gz
+tar xzf dahdi*
+cd /usr/src/dahdi-linux-complete-3.1.0+3.1.0
+
+sudo sed -i 's|(netdev, \&wc->napi, \&wctc4xxp_poll, 64);|(netdev, \&wc->napi, \&wctc4xxp_poll);|g' /usr/src/dahdi-linux-complete-3.1.0+3.1.0/linux/drivers/dahdi/wctc4xxp/base.c
+sudo sed -i 's|<linux/pci-aspm.h>|<linux/pci.h>|g' /usr/src/dahdi-linux-complete-3.1.0+3.1.0/linux/include/dahdi/kernel.h
+
+
+make
 make install
+make install-config
+
+yum -y install dahdi-tools-libs
+
+cd tools
+make clean
+make
+make install
+make install-config
+
 modprobe dahdi
 modprobe dahdi_dummy
-make config
+
 cp /etc/dahdi/system.conf.sample /etc/dahdi/system.conf
 /usr/sbin/dahdi_cfg -vvvvvvvvvvvvv
 
@@ -274,16 +288,15 @@ echo 'Continuing...'
 mkdir /usr/src/asterisk
 cd /usr/src/asterisk
 wget http://downloads.asterisk.org/pub/telephony/libpri/libpri-current.tar.gz
-wget http://download.vicidial.com/required-apps/asterisk-13.29.2-vici.tar.gz
-
+wget http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-16.30.1.tar.gz
 
 tar -xvzf asterisk-*
 tar -xvzf libpri-*
 
-cd /usr/src/asterisk/asterisk*
+cd /usr/src/asterisk/asterisk-16.30.1
 
 : ${JOBS:=$(( $(nproc) + $(nproc) / 2 ))}
-./configure --libdir=/usr/lib --with-gsm=internal --enable-opus --enable-srtp --with-ssl --enable-asteriskssl --with-pjproject-bundled --with-jansson-bundled
+./configure --libdir=/usr/lib64 --with-gsm=internal --enable-opus --enable-srtp --with-ssl --enable-asteriskssl --with-pjproject-bundled --with-jansson-bundled
 
 make menuselect/menuselect menuselect-tree menuselect.makeopts
 #enable app_meetme
@@ -328,7 +341,7 @@ SET GLOBAL connect_timeout=60;
 use asterisk;
 \. /usr/src/astguiclient/trunk/extras/MySQL_AST_CREATE_tables.sql
 \. /usr/src/astguiclient/trunk/extras/first_server_install.sql
-update servers set asterisk_version='13.29.2';
+update servers set asterisk_version='16.30.1';
 quit
 MYSQLCREOF
 
@@ -380,7 +393,7 @@ VARDB_port => 3306
 VARactive_keepalives => 123456789ES
 
 # Asterisk version VICIDIAL is installed for
-VARasterisk_version => 13.X
+VARasterisk_version => 16.X
 
 # FTP recording archive connection information
 VARFTP_host => 10.0.0.4
@@ -515,9 +528,6 @@ cat <<CRONTAB>> /root/crontab-file
 ### inbound email parser
 * * * * * /usr/share/astguiclient/AST_inbound_email_parser.pl
 
-###backup
-47 23 * * * /usr/share/astguiclient/ADMIN_backup.pl
-
 ### Daily Reboot
 #30 6 * * * /sbin/reboot
 
@@ -531,6 +541,9 @@ crontab /root/crontab-file
 crontab -l
 
 #Install rc.local
+
+sudo sed -i 's|exit 0|### exit 0|g' /etc/rc.d/rc.local
+
 tee -a /etc/rc.d/rc.local <<EOF
 
 
@@ -584,6 +597,9 @@ sleep 20
 ### start up asterisk
 
 /usr/share/astguiclient/start_asterisk_boot.pl
+
+exit 0
+
 EOF
 
 chmod +x /etc/rc.d/rc.local
@@ -660,9 +676,10 @@ Please Hold while I redirect you!
 WELCOME
 
 chmod 777 /var/spool/asterisk/monitorDONE
+chkconfig asterisk off
 
 read -p 'Press Enter to Reboot: '
 
-echo "Restarting Centos"
+echo "Restarting AlmaLinux"
 
 reboot
